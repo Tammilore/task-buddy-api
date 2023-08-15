@@ -1,0 +1,146 @@
+Create a package for your files or folder with npm init
+Then make sure to install nodemon as a dev dependency - npm i nodemon -D
+Add the correct scripts for start, dev
+Use npm i install to install packages from npm
+The main field in the package json is for the main file name for where our code should run, this is the file modules will be imported to
+npm i express and npm i router are needed for developing apis
+
+npm i router - This seems to already be a core or common module of nodejs so you just use it in your code automatically
+
+npm i dotenv is a module that allows you laod environment variables i.e. for e.g. when we use process.env.REFRESH_TOKEN_SECRET
+You could have it as require('dotenv').config() in each of the files where you make use of variables but you could also just add it once to the server file
+
+The model folder is where data should be
+routes/api/... is where the api routes or logic should be
+
+There are two ways to work with API dev, the function code can be directly written in the routes/api folder then imported into the main file
+Or the logic can be separated, the function code written in a controllerjs file and then imported into the file in the route/api folder then that is imported into the main file being used
+The second way is cleaner
+
+The above is an below of how to filter a data to exclude something, in this case to exclude the object of an array that has the id supplied to the request body
+const filteredArray = data.employees.filter(emp => emp.id !== req.body.id)
+
+To do the opposite i.e to filter for just that object that has the id supplied to the body, then use the below
+const filteredArray = data.employees.filter(emp => emp.id === req.body.id)
+
+npm i bcrypt is the package used to sort and secure passwords
+
+Using sample data in the model folder is simply to run things in dev environment, for prod we would connect to an actual db
+
+JWT - JSON Web Tokens - User identification issued after initial user authentication
+There are acces tokens, used for a short time and refresh tokens used for a longer period
+Keep tokens in memory and do not store in a local db
+Should be sent as httpOnly cookie and not accessible via javascript
+Use secure:true in the auth and logout cntrollers when in prod
+
+Access tokens should be issued at user authentication
+It is what will be used to access your API's protected routes
+It will be verified with middleware
+When it expires, the refresh token will be sent to the get another access token
+
+Refresh token is also issued at user authorization
+
+Packages for using jwt, installing them all in one line - npm i dotenv jsonwebtoken cookie-parser
+
+To generate a random crypto line, run node in the terminal and run the function -  require('crypto').randomBytes(64).toString('hex')
+This crypto line is what we will keep in our .env file as secret keys and use to create the access and refresh tokens
+Make sure that your node_modules and .env file are added to a .gitignore file so you are not sending your .env file to a public place
+
+We send the accessToken as the json response so it is just stored in memory and used in the frontend
+But for the refreshToken we need to store it not just in local memory so we need to send it as an httpOnly cookie
+
+The verifyJWT middleware function is what we will import to the files of all the api routes that we want to protected
+
+There are two ways to go about importing the verifyJWT function
+
+1. Apply it to each route in the route/api folder e.g the employees.js file
+const verifyJWT = require('../../middleware/verifyJWT') - Add this to the top
+Then router.route('/')
+     .get(verifyJWT, employeesController.getAllEmployees) 
+
+
+2. Apply it directly in the server code:
+const verifyJWT = require('./middleware/verifyJWT') - Add this to the top of the server code
+Then add the below before all the routes imported in the server code that you want to be protected. It will apply to all the routes after it sso make sure that routes that should not be protected are before it
+app.use(verifyJWT)
+
+The first way is good if not all the functions for that route are protected so you can specify which you want it for
+The second is if all the functions for that route are protected then just apply it to the general route in the server doc
+
+Authentication is the process of verifying who someone is
+Authorization is the process of verifying what resources a user has access to
+
+With JWTokens we can authorize who has has access to endpoints and the resources these endpoints provide
+
+Create a roles file in config folder with codes to signify the different roles
+Then add the creation of the basic roles to the register controller and to the functions creating the accessTokens, no need to add it to the refreshTokens, also add it to the functions verifying the access tokens
+
+Take into mind the way we sign and create the access tokens when we need to verify them
+E.g to sign them in the auth and refresh controllers, we used a UserInfo object with the username and roles from the db
+Which means that when they are being verified in the verifyJWT middleware, we are checking the decoded values by passing values like decoded.UserInfo.username, instead of decoded.username directly
+
+The verifyRoles middleware should be added to each route in the route/api file
+The roles list and the verifyRoles middleware should be imported in the route/api file
+E.g in the employees.js file -    .post(verifyRoles(ROLES_LIST.Admin, ROLES_LIST.Editor), employeesController.createNewEmployee)
+
+MongoDB stores data in collections
+The individual records are called documents
+The documents have a key-value json structure
+Unlike SQL databases that are relational, MongoDB is not
+
+Advantages of using MongoDB
+- Collections are queried fast
+- Very flexibilty in adding new data without destrying your whole db
+- Scalability
+- Usability, very fast to get started with
+
+1. Create a project
+2. Create a database (e.g. CompanyDB) and a collection (e.g. employees)
+3. Set database permissions by creating a user
+4. Connect the database
+ - In dev mode, choose allow access from everywhere since your project isn't hosted anywhere specific yet, you can change this later
+ - Connect your application with drivers
+ - Copy the connection string in the instructions
+ - Add DATATBASE_URI to the .env file and use that as it's value. Don't forget to add the datanase name just before the question mark in the connection string
+ - Run npm i mongoose - Mongoose is a library that makes using Mongodb easier to use
+ - Mongoose uses async functions
+ - Add mongoose to the server.js file
+ - Create a dbConn file in config folder to connect mongo and mongoose and import it to server.js
+ - Add the function to only open our server port when we are sure they connected. Check the last lines in server.js
+ - Then run npm dev run
+5. Create the DB schemas
+ - Create a file in the models folder.
+ - It should start with a capital letter and should not be plural e.g Employee.js
+ - This is because when Mongoose sets the database it will turn it to lowercase and plural and this is what it looks for.
+ - There is no need to add an id in the schemas cuz mongo already does that
+6. Now replace the places where we used the local db to the db we have created for Mongo in the models folder
+ E.g. - Before: const usersDB = {
+    users: require('../model/users.json'),
+    setUsers: function (data) { this.users = data }
+}
+ - Now: const User = require('../model/User') etc.
+
+ - In the register controller, we are not assigning the role of User like before cuz we already set it as default in our Mongodb schema for User.js
+ - For the purpose of testing with small number of users, go to Mongodb and assign roles there to the users but we would need a way to automate this of course
+
+When you update a record/document in Mongodb you will need to use the save function like this - const result = await employee.save()
+
+Added a verifyOwnership middleware for the users route so that only the owner of the user record can edit and get their details
+Then only admin can get all users and delete users
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
